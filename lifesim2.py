@@ -22,7 +22,7 @@ mcs_people = mcs_people.dropna()
 num_people = mcs_people.shape[0]
 
 # add constant column to pick up the regression constant
-mcs_people["constant"] = 1
+mcs_people['constant'] = 1
 
 # drop columns for reference values in our equations as these are represented in the constant
 mcs_people = mcs_people.drop(columns=['country', 'country1', 'ETHCM6', 'ethnicity1'])

@@ -63,12 +63,12 @@ class Person:
         history_list.append(row)
         
         # loop through x and add all the age0 variables as starting coditions
-        for name, value in x.iteritems():
+        for name, value in self.x.items():
             if name.endswith('_age0'):
                 row = pd.DataFrame({'mcsid': [self.mcsid], 'mcs_sweep': [1], 'age': [0], 'variable': [name[:-5]], 'value': [value]})
                 history_list.append(row)
         self.history = pd.concat(history_list, ignore_index=True)
-
+        
 
     def simulate_sweep(self, sweep_num):
         """Simulates an MCS sweep for the individual
@@ -168,13 +168,13 @@ class Person:
         xb = np.dot(self.betas[binary_col_names].values.T, self.x.values).astype(float)
         
         # compute threshold probabilities thershold_p using the sigmoid function and the odds ratio
-        thershold_p = 1 / (1 + np.exp(-xb))
+        threshold_p = 1 / (1 + np.exp(-xb))
         
         # get list of output variable names
         output_variables = [col_name.replace(' b', '') for col_name in binary_col_names]
         
         # create boolean mask of outcomes based on probability thresholds and random probabilities from probs
-        binary_outcomes = (self.probs[output_variables] < thershold_p).astype(int)
+        binary_outcomes = (self.probs[output_variables] < threshold_p).astype(int)
         
         # update binary outcomes in x 
         if sweep_num < 7:
@@ -248,7 +248,7 @@ class Person:
         # used to trim the _ageX from the variable name before saving in history
         trim = 6 if sweep_age > 9 else 5
           
-        for name, value in outputs.iteritems():
+        for name, value in outputs.items():
             if name.endswith('_age' + str(sweep_age)):
                 row = pd.DataFrame({'mcsid': [self.mcsid], 'mcs_sweep': [sweep_num], 'age': [sweep_age], 'variable': [name[:-trim]], 'value': [value]})
                 history_list.append(row)
