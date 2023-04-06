@@ -38,11 +38,11 @@ class Person:
         Parameters
         ----------
         x : Series
-            Contains all person specific charateristics including placeholder
+            Contains all person specific characteristics including placeholder
             for characteristics that will be simulated for MCS sweeps 2-7
         betas : DataFrame
             Contains the regression coefficients for the lifecourse trajectory 
-            equations with rows representing idependent variables coefficients 
+            equations with rows representing independent variables coefficients 
             and columns representing dependent (outcome) variables
         probs : Series
             Contains random draws to compare the results of the binary equations 
@@ -75,17 +75,17 @@ class Person:
 
         The equations to simulate the given sweep are run combining x 
         characteristics and betas coefficients. Some equations are 
-        continous and so that is all that is required in order to produce
+        continuous and so that is all that is required in order to produce
         outcomes whilst others are binary so the equation generates an 
         odds ratio that we convert to a probability threshold using the 
-        sigmoid function. This probabilty threshold is then compared with 
+        sigmoid function. This probability threshold is then compared with 
         a random number passed in specifically for this outcome through 
         the probs instance variable to calculate whether the outcome 
         occurred. All new variables simulated in the sweep are updated in 
         x and saved to the history in a one row per variable format. We
         also simulate if individuals are taken into social care during the 
         sweep, if they are we decrement the cognitive, emotional and conduct
-        skills for the current sweep. We assume this is a one off decrement
+        skills for the current sweep. We assume this is a one-off decrement
         and that individuals do not leave social care once they enter.
 
         Parameters
@@ -126,7 +126,7 @@ class Person:
         history_list = []
         
         #####################################################
-        # calculate continuos outcome equations
+        # calculate continuous outcome equations
         #####################################################
       
         # select columns that end with '_age' + str(sweep_age) + ' c'
@@ -138,7 +138,7 @@ class Person:
         # fix the variable names
         continuous_outcomes = pd.Series(continuous_outcomes, index=continuous_col_names.str.rstrip(' c'))
         
-        # update continuos outcomes in x
+        # update continuous outcomes in x
         if sweep_num < 7:
             self.x.update(continuous_outcomes)
             # bound con and emo between 0 and 10
@@ -183,7 +183,7 @@ class Person:
             x2 = pd.concat([x2, binary_outcomes])
 
         ######################################################################
-        # calculate social care outcome and adjust other outcome accordingly
+        # calculate social care outcome and adjust other outcomes accordingly
         ######################################################################
         
         if self.social_care:
@@ -260,14 +260,14 @@ class Person:
         """Simulates all MCS sweep for the individual
 
         This runs the simulation for sweeps 2 through to 7 sequentially.
-        When simulating policies it may be desirable to instead run the
-        sweep simulations individually intersperesed with the policy 
+        When simulating policies, it may be desirable to instead run the
+        sweep simulations individually interspersed with the policy 
         interventions which will make changes to x and/or beta values 
         which will then be picked up in subsequent sweep simulations. 
-        Similarly you may want to calculate cohort specific context 
+        Similarly, you may want to calculate cohort specific context 
         factors e.g. peer effects that you update between sweeps and 
         pass in through updated x and or beta values for subsequent
-        sweep simulations to use.ß
+        sweep simulations to use.
         """
         
         for sweep_num in range(2, 8):

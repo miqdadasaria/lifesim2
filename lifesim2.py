@@ -9,7 +9,7 @@ from Person import Person
 # capture parameter uncertainty in our estimated equations
 # note each additional universe will add approximately 10 
 # minutes to the compute time - though could be run in parallel
-# if set to 1 will use determinstic betas directly from input
+# if set to 1 will use deterministic betas directly from input
 num_universes = 1
 
 # import all individuals in the first sweep of MCS
