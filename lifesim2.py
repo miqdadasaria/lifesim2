@@ -3,27 +3,31 @@ import numpy as np
 import re
 import time
 from tqdm import tqdm
-
 from Person import Person
 
-# the number of simulations universes we want to run to capture parameter 
-# uncertainty in our estimated equations 
-num_universes = 5
+# specify the number of simulations universes we want to run to  
+# capture parameter uncertainty in our estimated equations
+# note each additional universe will add approximately 10 
+# minutes to the compute time - though could be run in parallel
+# if set to 1 will use determinstic betas directly from input
+num_universes = 1
 
-# import all members of the first wave of MCS
+# import all individuals in the first sweep of MCS
 mcs_people = pd.read_excel('data/mcs_people.xls', header=0)
 
 # drop any MCS members with missing variables
 mcs_people = mcs_people.dropna()
-num_people = mcs_people.shape[0]
 
-# drop columns for reference values
-mcs_people = mcs_people.drop(columns=['country', 'country1', 'ETHCM6', 'ethnicity1'])
+# calculate the total number of individuals we will simulate
+num_people = mcs_people.shape[0]
 
 # add constant column to pick up the regression constant
 mcs_people["constant"] = 1
 
-# fix column names
+# drop columns for reference values in our equations as these are represented in the constant
+mcs_people = mcs_people.drop(columns=['country', 'country1', 'ETHCM6', 'ethnicity1'])
+
+# standardise the variable names to be lower case and end in _ageX
 mcs_people.columns = [col.replace('Age', '_age') for col in mcs_people.columns]
 mcs_people.columns = [col.replace('MP', '_mp') for col in mcs_people.columns]
 mcs_people.columns = [re.sub(r'INCEQ(\d+)log', r'log_eqv_inc_sweep\1', col) for col in mcs_people.columns]
@@ -48,6 +52,7 @@ betas.fillna(0.0, inplace=True)
 betas.replace('.', 0.0, inplace=True)
 betas = betas.apply(pd.to_numeric)
 
+# standardise the variable names to be lower case and end in _ageX
 betas.columns = [col.replace('Age', '_age') for col in betas.columns]
 betas.columns = [re.sub(r'Obese(\d+)_UK90', r'obeses_uk90_age\1', col) for col in betas.columns]
 betas.columns = [re.sub(r'senP(\d+)state', r'sen_age\1', col) for col in betas.columns]
@@ -94,6 +99,7 @@ betas_se.fillna(0.0, inplace=True)
 betas_se.replace('.', 0.0, inplace=True)
 betas_se = betas_se.apply(pd.to_numeric) 
 
+# standardise the variable names to be lower case and end in _ageX
 betas_se.columns = [col.replace('Age', '_age') for col in betas_se.columns]
 betas_se.columns = [re.sub(r'Obese(\d+)_UK90', r'obeses_uk90_age\1', col) for col in betas_se.columns]
 betas_se.columns = [re.sub(r'senP(\d+)state', r'sen_age\1', col) for col in betas_se.columns]
@@ -130,35 +136,47 @@ betas_se.sort_index(axis=0, inplace=True)
 # set the seed to allow us to reproduce stochastic results
 np.random.seed(786110)
 
-# create the simulated betas combining the means and standard errors to create universes
+# create the simulated betas combining the means and standard errors to create 
+# alternative parameter universes that we will use to capture the uncertainty
+# in the estimated equation coefficients
 sim_betas = []
-for i in range(num_universes):
-    sim_mean = betas + np.random.normal(scale=betas_se)
-    sim_betas.append(sim_mean)
-
-# create simulated probabilites for binary outcomes for each person in the
-# MCS sample for each universe
-# extract binary columns for which we need to generate probabilities
+if num_universes > 1:
+  for i in range(num_universes):
+      sim_mean = betas + np.random.normal(scale=betas_se)
+      sim_betas.append(sim_mean)
+else:
+  sim_betas.append(betas)
+  
+# extract binary outcome variable names from the equations
 binary_cols = betas.columns[betas.columns.str.endswith(' b')].str.replace(' b$', '', regex=True)
 
-# add these binary columns as probability draws in the mcs_sample
+# add columns to represent entering into social care at various ages
+binary_cols = binary_cols.union(['social_care_age3','social_care_age5','social_care_age7','social_care_age11','social_care_age14','social_care_age17'])
+
+# add these binary columns as probability draws for each person in MCS
+# these probabilities will be used to simulate if binary outcomes occur
 sim_probs = []
 for i in range(num_universes):
     df = pd.DataFrame(data=np.random.rand(num_people, binary_cols.size) ,columns=binary_cols)
     sim_probs.append(df)
 
-
+# run the simulation for each parameter universe
 for n in range(num_universes):
     start_time = time.time()
+    
+    # set up a dataframe to capture the simulation results
     history = pd.DataFrame(columns=['mcsid', 'mcs_sweep', 'age', 'variable', 'value'])
     
+    # run the simulation for each individual in MCS for this parameter universe
     for i in tqdm(range(num_people)):
         person = Person(mcs_people.iloc[i], sim_betas[n], sim_probs[n].iloc[i])
         person.simulate_all_sweeps()
         history = pd.concat([history, person.history], ignore_index=True)
     
+    # save the overall history for all simulate MCS individuals for this
+    # parameter universe out to csv file
     history.to_csv("output/universe_" + str(n) + ".csv", index=False)
-    # stop the timer and calculate the elapsed time
+    
     elapsed_time = time.time() - start_time
     
     # print the elapsed time
