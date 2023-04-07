@@ -164,14 +164,17 @@ for i in range(num_universes):
 for n in range(num_universes):
     start_time = time.time()
     
-    # set up a dataframe to capture the simulation results
-    history = pd.DataFrame(columns=['mcsid', 'mcs_sweep', 'age', 'variable', 'value'])
+    # set up a list to capture the simulation results
+    history_list = []
     
     # run the simulation for each individual in MCS for this parameter universe
     for i in tqdm(range(num_people)):
         person = Person(mcs_people.iloc[i], sim_betas[n], sim_probs[n].iloc[i])
         person.simulate_all_sweeps()
-        history = pd.concat([history, person.history], ignore_index=True)
+        history_list.append(person.history)
+    
+    # collapse the list to a single dataframe
+    history = pd.concat(history_list, ignore_index=True)
     
     # save the overall history for all simulate MCS individuals for this
     # parameter universe out to csv file
