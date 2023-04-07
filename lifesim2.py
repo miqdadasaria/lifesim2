@@ -3,14 +3,16 @@ import numpy as np
 import re
 import time
 from tqdm import tqdm
+from joblib import Parallel, delayed
 from Person import Person
+
 
 # specify the number of simulations universes we want to run to  
 # capture parameter uncertainty in our estimated equations
 # note each additional universe will add approximately 10 
 # minutes to the compute time - though could be run in parallel
 # if set to 1 will use deterministic betas directly from input
-num_universes = 1
+num_universes = 3
 
 # import all individuals in the first sweep of MCS
 mcs_people = pd.read_excel('data/mcs_people.xls', header=0)
@@ -160,18 +162,17 @@ for i in range(num_universes):
     df = pd.DataFrame(data=np.random.rand(num_people, binary_cols.size) ,columns=binary_cols)
     sim_probs.append(df)
 
+def simulate_person(mcs_people, sim_betas, sim_probs):
+    person = Person(mcs_people, sim_betas, sim_probs)
+    person.simulate_all_sweeps()
+    return person.history
+
 # run the simulation for each parameter universe
-for n in range(num_universes):
+for n in tqdm(range(num_universes)):
     start_time = time.time()
     
-    # set up a list to capture the simulation results
-    history_list = []
-    
-    # run the simulation for each individual in MCS for this parameter universe
-    for i in tqdm(range(num_people)):
-        person = Person(mcs_people.iloc[i], sim_betas[n], sim_probs[n].iloc[i])
-        person.simulate_all_sweeps()
-        history_list.append(person.history)
+    # use joblib to run the function in parallel for each individual in the MCS
+    history_list = Parallel(n_jobs=-1)(delayed(simulate_person)(mcs_people.iloc[i], sim_betas[n], sim_probs[n].iloc[i]) for i in range(num_people))
     
     # collapse the list to a single dataframe
     history = pd.concat(history_list, ignore_index=True)
