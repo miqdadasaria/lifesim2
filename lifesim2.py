@@ -12,7 +12,7 @@ from Person import Person
 # note each additional universe will add approximately 10 
 # minutes to the compute time - though could be run in parallel
 # if set to 1 will use deterministic betas directly from input
-num_universes = 3
+num_universes = 30
 
 # import all individuals in the first sweep of MCS
 mcs_people = pd.read_excel('data/mcs_people.xls', header=0)
@@ -162,10 +162,15 @@ for i in range(num_universes):
     df = pd.DataFrame(data=np.random.rand(num_people, binary_cols.size) ,columns=binary_cols)
     sim_probs.append(df)
 
-def simulate_person(mcs_people, sim_betas, sim_probs):
-    person = Person(mcs_people, sim_betas, sim_probs)
+# for a given person in MCS create an instance of the Person class and simulate
+# their life from ages 0 to 17 returning key events in their life history
+def simulate_person(mcs_individual, betas, probs):
+    person = Person(mcs_individual, betas, probs)
     person.simulate_all_sweeps()
     return person.history
+
+# the output file where we will save the simualtion history to
+output_file = "output/" + time.strftime("%Y%m%d-%H%M%S") + "_history_wide_universes_0_to_" + str(num_universes) + ".csv"
 
 # run the simulation for each parameter universe
 for n in tqdm(range(num_universes)):
@@ -177,10 +182,17 @@ for n in tqdm(range(num_universes)):
     # collapse the list to a single dataframe
     history = pd.concat(history_list, ignore_index=True)
     
-    # save the overall history for all simulate MCS individuals for this
-    # parameter universe out to csv file
-    history.to_csv("output/universe_" + str(n) + ".csv", index=False)
+    # convert to wide form
+    history = pd.pivot_table(history, values='value', index='mcsid', columns=['variable','age'])
+    history.columns = history.columns.map(lambda x: '{}_age{}'.format(x[0], x[1]))
+    history = history.reset_index()
+    history.insert(0, 'simulation', n)
     
+    # append the overall history for all simulated MCS individuals for this parameter universe
+    # out to output_file adding a header row if file does not already exist 
+    with open(output_file, 'a') as f:
+      history.to_csv(f, mode='a', index=False, header=f.tell()==0)
+
     elapsed_time = time.time() - start_time
     
     # print the elapsed time
