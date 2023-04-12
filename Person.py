@@ -64,7 +64,7 @@ class Person:
         
         # loop through x and add all the age0 variables as starting coditions
         for name, value in self.x.items():
-            if name.endswith('_age0'):
+            if name.endswith('_age0') or name == 'lifelimiting_age3':
                 row = pd.DataFrame({'mcsid': [self.mcsid], 'mcs_sweep': [1], 'age': [0], 'variable': [name[:-5]], 'value': [value]})
                 history_list.append(row)
         self.history = pd.concat(history_list, ignore_index=True)
